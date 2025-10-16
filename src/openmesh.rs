@@ -7,6 +7,7 @@ use crate::providers::{ProviderManager, DeployConfig};
 
 pub fn handle_openmesh_command(command: OpenMeshCommands) -> Result<()> {
     match command {
+        OpenMeshCommands::Providers => list_providers()?,
         OpenMeshCommands::Xnode { command } => handle_xnode_command(command)?,
         OpenMeshCommands::Provider { command } => handle_provider_command(command)?,
     }
@@ -64,6 +65,9 @@ fn handle_xnode_command(command: XnodeCommands) -> Result<()> {
 
 #[derive(clap::Subcommand)]
 pub enum OpenMeshCommands {
+    /// 🍒 List all available cloud providers
+    Providers,
+
     /// 🌐 xNode deployment and management
     #[command(after_help = "\n\
 ╔═══════════════════════════════════════════════════════════════╗\n\
@@ -80,8 +84,8 @@ pub enum OpenMeshCommands {
     • capsule openmesh xnode list         → View all deployed xNodes\n\
 \n\
   Features:\n\
-    ✓ 7 cloud providers (AWS, DigitalOcean, Hivelocity, etc.)\n\
-    ✓ 31 instance templates (budget to enterprise GPU)\n\
+    ✓ 8 cloud providers (Cherry Servers, AWS, DigitalOcean, etc.)\n\
+    ✓ 31+ instance templates (budget to enterprise GPU)\n\
     ✓ 50+ datacenter regions worldwide\n\
     ✓ Smart deployment with auto-selection\n\
     ✓ Cost tracking and analytics\n\
@@ -290,13 +294,24 @@ fn list_providers() -> Result<()> {
 
             let has_gpu = templates.iter().any(|t| t.gpu.is_some());
 
-            table.add_row(Row::new(vec![
-                Cell::new(&provider_name).style_spec("Fc"),
-                Cell::new(&templates.len().to_string()),
-                Cell::new(&regions.len().to_string()),
-                Cell::new(&format!("${:.3} - ${:.2}/hr", min_price, max_price)),
-                Cell::new(if has_gpu { "✓" } else { "-" }),
-            ]));
+            // Cherry Servers gets special styling!
+            if provider_name == "cherry" {
+                table.add_row(Row::new(vec![
+                    Cell::new(&format!("🍒 {}", provider_name)).style_spec("FrBr"),  // Red bold on red background
+                    Cell::new(&templates.len().to_string()).style_spec("Fr"),
+                    Cell::new(&regions.len().to_string()).style_spec("Fr"),
+                    Cell::new(&format!("${:.3} - ${:.2}/hr", min_price, max_price)).style_spec("Fr"),
+                    Cell::new(if has_gpu { "✓" } else { "-" }).style_spec("Fr"),
+                ]));
+            } else {
+                table.add_row(Row::new(vec![
+                    Cell::new(&provider_name).style_spec("Fc"),
+                    Cell::new(&templates.len().to_string()),
+                    Cell::new(&regions.len().to_string()),
+                    Cell::new(&format!("${:.3} - ${:.2}/hr", min_price, max_price)),
+                    Cell::new(if has_gpu { "✓" } else { "-" }),
+                ]));
+            }
         }
     }
 
@@ -304,7 +319,7 @@ fn list_providers() -> Result<()> {
 
     println!();
     println!("{}", "─────────────────────────────────────────────────────────────────".cyan());
-    println!("{} {} providers available", "▸".green().bold(), providers.len());
+    println!("{} {} providers available {}", "▸".green().bold(), providers.len(), "(🍒 Cherry Servers featured!)".magenta().bold());
     println!("{} Use {} to view templates", "💡".cyan(), "capsule openmesh xnode templates".cyan().bold());
     println!("{} Configure credentials: {}", "🔧".cyan(), "capsule openmesh provider configure <name> --api-key <key>".cyan().bold());
     println!();

@@ -70,8 +70,8 @@ enum Commands {
     capsule openmesh provider configure    → Set API keys\n\
 \n\
   What You Get:\n\
-    ✓ 7 cloud providers (AWS, DigitalOcean, Vultr, Hivelocity...)\n\
-    ✓ 31 instance templates (budget $0.004/hr to enterprise GPU)\n\
+    ✓ 8 cloud providers (🍒 Cherry Servers, AWS, DigitalOcean...)\n\
+    ✓ 36 instance templates (budget $0.08/hr to enterprise GPU)\n\
     ✓ 50+ datacenter regions worldwide\n\
     ✓ GPU templates (Tesla V100, RTX 6000, H100)\n\
     ✓ Cost tracking and analytics\n\

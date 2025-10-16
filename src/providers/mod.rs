@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+pub mod cherry;
 pub mod hivelocity;
 pub mod digitalocean;
 pub mod vultr;
@@ -121,7 +122,15 @@ impl ProviderManager {
     }
 
     fn initialize_providers(&mut self) -> Result<()> {
-        // Initialize all providers
+        // Initialize all providers - Cherry Servers first!
+        let cherry_api_key = self.config
+            .get("cherry")
+            .and_then(|c| c.api_key.clone());
+        self.providers.insert(
+            "cherry".to_string(),
+            Box::new(cherry::CherryServersProvider::new(cherry_api_key)),
+        );
+
         let hivelocity_api_key = self.config
             .get("hivelocity")
             .and_then(|c| c.api_key.clone());
@@ -182,7 +191,14 @@ impl ProviderManager {
     }
 
     pub fn list_providers(&self) -> Vec<String> {
-        self.providers.keys().cloned().collect()
+        let mut providers: Vec<String> = self.providers.keys().cloned().collect();
+        // Sort providers, but Cherry Servers always first!
+        providers.sort();
+        if let Some(cherry_pos) = providers.iter().position(|p| p == "cherry") {
+            providers.remove(cherry_pos);
+            providers.insert(0, "cherry".to_string());
+        }
+        providers
     }
 
     pub fn get_provider(&self, name: &str) -> Option<&Box<dyn Provider>> {
