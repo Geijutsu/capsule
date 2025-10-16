@@ -1,0 +1,35 @@
+name: Ollama
+description: Local LLM runtime for running language models
+category: AI/ML
+dependencies: []
+optional_dependencies:
+  - cuda (NVIDIA GPU acceleration)
+url: https://ollama.com
+tasks:
+  - name: Check if Ollama is already installed
+    stat:
+      path: /usr/local/bin/ollama
+    register: ollama_check
+
+  - name: Download and install Ollama
+    shell: curl -fsSL https://ollama.com/install.sh | sh
+    args:
+      creates: /usr/local/bin/ollama
+    when: not ollama_check.stat.exists
+
+  - name: Start and enable ollama service
+    systemd:
+      name: ollama
+      state: started
+      enabled: yes
+    become: yes
+    ignore_errors: yes
+
+  - name: Verify Ollama installation
+    shell: ollama --version
+    register: ollama_version
+    changed_when: false
+
+  - name: Display Ollama version
+    debug:
+      msg: "Ollama installed: {{ ollama_version.stdout }}"

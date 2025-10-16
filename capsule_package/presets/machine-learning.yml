@@ -1,0 +1,12 @@
+name: Machine Learning
+description: ML tools and libraries (scikit-learn, numpy, pandas, jupyter)
+category: AI/ML
+dependencies:
+- python
+packages:
+- python3-numpy
+- python3-pandas
+- python3-scipy
+- python3-sklearn
+- jupyter-notebook
+- python3-matplotlib

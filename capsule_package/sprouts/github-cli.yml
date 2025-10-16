@@ -1,0 +1,41 @@
+name: GitHub CLI
+description: Official GitHub command-line tool (gh)
+category: Development Tools
+dependencies:
+  - curl
+  - gpg
+url: https://cli.github.com
+tasks:
+  - name: Add GitHub CLI GPG key
+    shell: |
+      curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
+      sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+    args:
+      creates: /usr/share/keyrings/githubcli-archive-keyring.gpg
+
+  - name: Add GitHub CLI apt repository
+    shell: |
+      echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | \
+      sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+    args:
+      creates: /etc/apt/sources.list.d/github-cli.list
+
+  - name: Update apt cache
+    apt:
+      update_cache: yes
+    become: yes
+
+  - name: Install GitHub CLI
+    apt:
+      name: gh
+      state: present
+    become: yes
+
+  - name: Verify GitHub CLI installation
+    shell: gh --version
+    register: gh_version
+    changed_when: false
+
+  - name: Display GitHub CLI version
+    debug:
+      msg: "GitHub CLI installed: {{ gh_version.stdout_lines[0] }}"

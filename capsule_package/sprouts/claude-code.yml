@@ -1,0 +1,37 @@
+name: Claude Code
+description: Anthropic's official CLI for Claude AI (installs via NPM)
+category: Development Tools
+dependencies:
+  - npm
+url: https://docs.claude.com/en/docs/claude-code
+tasks:
+  - name: Check if Claude Code is already installed
+    shell: command -v claude
+    register: claude_check
+    changed_when: false
+    failed_when: false
+
+  - name: Install Claude Code via npm
+    shell: npm install -g @anthropic-ai/claude-cli
+    when: claude_check.rc != 0
+
+  - name: Verify Claude Code installation
+    shell: claude --version
+    register: claude_version
+    changed_when: false
+    failed_when: false
+
+  - name: Display installation result
+    debug:
+      msg: "Claude Code installed successfully: {{ claude_version.stdout }}"
+    when: claude_version.rc == 0
+
+  - name: Display installation failure
+    debug:
+      msg: "Installation may have failed. Try running: npm install -g @anthropic-ai/claude-cli"
+    when: claude_version.rc != 0
+
+next_steps:
+  - "Start using Claude: claude"
+  - "Get help: claude --help"
+  - "View docs: https://docs.claude.com/en/docs/claude-code"

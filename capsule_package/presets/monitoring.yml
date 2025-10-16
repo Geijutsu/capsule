@@ -1,0 +1,9 @@
+name: Monitoring Tools
+description: System monitoring and analysis tools
+packages:
+- htop
+- iotop
+- nethogs
+- dstat
+- sysstat
+- ncdu

@@ -1,0 +1,30 @@
+name: Qwen2.5-Coder 32B
+description: Pull Qwen2.5-Coder 32B model via Ollama (expert-level coding assistant)
+category: AI/ML
+dependencies:
+  - ollama
+url: https://ollama.com/library/qwen2.5-coder
+tasks:
+  - name: Check if Ollama is running
+    shell: ollama list
+    register: ollama_running
+    changed_when: false
+    failed_when: false
+
+  - name: Pull Qwen2.5-Coder 32B model
+    shell: ollama pull qwen2.5-coder:32b 2>&1
+    args:
+      executable: /bin/bash
+
+  - name: Verify model installation
+    shell: ollama list | grep -i qwen2.5-coder
+    register: model_check
+    changed_when: false
+
+  - name: Display success message
+    debug:
+      msg: "Qwen2.5-Coder 32B model ready! Run: ollama run qwen2.5-coder:32b"
+
+next_steps:
+  - "Start chatting: ollama run qwen2.5-coder:32b"
+  - "Use in code: curl http://localhost:11434/api/generate -d '{\"model\": \"qwen2.5-coder:32b\", \"prompt\": \"...\"'}'"

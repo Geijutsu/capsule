@@ -1,0 +1,7 @@
+name: Docker
+description: Docker Engine and Docker Compose
+category: Containers
+dependencies: []
+packages:
+- docker
+- docker-compose

@@ -1,0 +1,7 @@
+name: Ollama
+description: Local LLM runtime for running language models
+category: AI/ML
+dependencies: []
+optional_dependencies:
+- name: cuda
+  description: NVIDIA GPU acceleration (recommended for better performance)

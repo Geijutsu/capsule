@@ -1,0 +1,11 @@
+name: CLI Power Tools
+description: Modern CLI utilities (jq, ripgrep, fzf, bat, etc.)
+packages:
+- jq
+- ripgrep
+- fzf
+- fd
+- silver-searcher
+- tree
+- tmux
+- httpie

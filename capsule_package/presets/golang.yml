@@ -1,0 +1,5 @@
+name: Go Development
+description: Go language and tools
+packages:
+- go
+- gopls

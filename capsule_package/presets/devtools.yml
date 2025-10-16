@@ -1,0 +1,12 @@
+name: Development Tools
+description: Essential dev tools (make, cmake, gdb, strace, etc.)
+packages:
+- gnumake
+- cmake
+- autoconf
+- automake
+- libtool
+- pkg-config
+- gdb
+- strace
+- valgrind

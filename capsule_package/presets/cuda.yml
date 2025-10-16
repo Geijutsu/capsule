@@ -1,0 +1,4 @@
+name: CUDA
+description: NVIDIA CUDA drivers and toolkit for GPU acceleration
+category: AI/ML
+dependencies: []

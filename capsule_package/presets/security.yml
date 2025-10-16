@@ -1,0 +1,11 @@
+name: Security Tools
+description: Security and firewall tools
+packages:
+- ufw
+- fail2ban
+- aide
+- rkhunter
+- lynis
+- chkrootkit
+- openssl
+- gnupg

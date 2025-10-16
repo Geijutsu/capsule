@@ -1,0 +1,6 @@
+name: Python Development
+description: Python 3, pip, venv, and dev tools
+packages:
+- python3
+- black
+- pylint

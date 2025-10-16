@@ -1,0 +1,6 @@
+name: Web Server
+description: Nginx web server and SSL tools
+packages:
+- nginx
+- certbot
+- python3-certbot-nginx

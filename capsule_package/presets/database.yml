@@ -1,0 +1,7 @@
+name: Database Tools
+description: PostgreSQL and Redis
+packages:
+- postgresql
+- postgresql-contrib
+- redis
+- redis-tools
