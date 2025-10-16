@@ -148,7 +148,7 @@ fn handle_xnode_command(command: XnodeCommands) -> Result<()> {
 
 #[derive(clap::Subcommand)]
 pub enum OpenMeshCommands {
-    /// Show OpenMesh overview and quick start
+    /// Show OpenMesh overview and quick start (default)
     #[command(hide = true)]
     Overview,
 
