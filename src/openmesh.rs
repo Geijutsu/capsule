@@ -7,10 +7,93 @@ use crate::providers::{ProviderManager, DeployConfig};
 
 pub fn handle_openmesh_command(command: OpenMeshCommands) -> Result<()> {
     match command {
+        OpenMeshCommands::Overview => show_openmesh_overview()?,
         OpenMeshCommands::Providers => list_providers()?,
         OpenMeshCommands::Xnode { command } => handle_xnode_command(command)?,
         OpenMeshCommands::Provider { command } => handle_provider_command(command)?,
     }
+    Ok(())
+}
+
+fn show_openmesh_overview() -> Result<()> {
+    println!();
+    println!("{}", "╔═══════════════════════════════════════════════════════════════════════╗".cyan());
+    println!("{}", "║                                                                       ║".cyan());
+    println!("{}              {}  OPENMESH XNODE DEPLOYMENT PLATFORM  {}              {}", "║".cyan(), "🌐".cyan(), "🌐".cyan(), "║".cyan());
+    println!("{}", "║                                                                       ║".cyan());
+    println!("{}", "║   Deploy and manage infrastructure across 8 cloud providers with     ║".cyan());
+    println!("{}", "║   a unified, beautiful CLI interface.                                ║".cyan());
+    println!("{}", "║                                                                       ║".cyan());
+    println!("{}", "╚═══════════════════════════════════════════════════════════════════════╝".cyan());
+    println!();
+
+    println!("{}", "  📋 QUICK START".green().bold());
+    println!();
+    println!("    {}  {}  {}", "1.".cyan().bold(), "capsule openmesh providers".white().bold(), "→ Browse 8 cloud providers".white());
+    println!("    {}  {}  {}", "2.".cyan().bold(), "capsule openmesh xnode templates".white().bold(), "→ View 36 instance templates".white());
+    println!("    {}  {}  {}", "3.".cyan().bold(), "capsule openmesh xnode deploy".white().bold(), "→ Launch your xNode".white());
+    println!();
+
+    println!("{}", "  🏗️  MAIN COMMANDS".green().bold());
+    println!();
+    println!("    {}  {}  {}", "▸".cyan(), "providers".white().bold(), "List all cloud providers with pricing".white());
+    println!("    {}  {}  {}", "▸".cyan(), "xnode".white().bold(), "Complete xNode lifecycle management".white());
+    println!("    {}  {}  {}", "▸".cyan(), "provider".white().bold(), "Configure API credentials".white());
+    println!();
+
+    println!("{}", "  🚀 DEPLOYMENT OPTIONS".green().bold());
+    println!();
+
+    use prettytable::{Table, Row, Cell, format};
+    let mut table = Table::new();
+    table.set_format(*format::consts::FORMAT_CLEAN);
+
+    table.add_row(Row::new(vec![
+        Cell::new("Type").style_spec("Fc"),
+        Cell::new("Count").style_spec("Fg"),
+        Cell::new("Examples").style_spec("Fw"),
+    ]));
+
+    table.add_row(Row::new(vec![
+        Cell::new("🍒 Providers"),
+        Cell::new("8"),
+        Cell::new("Cherry, AWS, DigitalOcean, Hivelocity, Vultr..."),
+    ]));
+
+    table.add_row(Row::new(vec![
+        Cell::new("📦 Templates"),
+        Cell::new("36"),
+        Cell::new("Budget to Enterprise GPU ($0.08-$3.30/hr)"),
+    ]));
+
+    table.add_row(Row::new(vec![
+        Cell::new("🌍 Regions"),
+        Cell::new("50+"),
+        Cell::new("Global coverage (US, EU, APAC)"),
+    ]));
+
+    table.add_row(Row::new(vec![
+        Cell::new("🎮 GPU Options"),
+        Cell::new("7"),
+        Cell::new("RTX A4000/A5000, Tesla V100, H100"),
+    ]));
+
+    table.printstd();
+    println!();
+
+    println!("{}", "  💡 PRO TIPS".yellow().bold());
+    println!();
+    println!("    {}  Use {} for smart instance selection", "•".yellow(), "capsule openmesh xnode deploy --budget 0.5".cyan());
+    println!("    {}  Filter GPU templates with {}", "•".yellow(), "capsule openmesh xnode templates --gpu".cyan());
+    println!("    {}  Export inventory with {}", "•".yellow(), "capsule openmesh xnode export".cyan());
+    println!();
+
+    println!("{}", "  🔗 DETAILED HELP".white().bold());
+    println!();
+    println!("    {}  {}", "→".cyan(), "capsule openmesh xnode --help       Full xNode commands".white());
+    println!("    {}  {}", "→".cyan(), "capsule openmesh provider --help    Provider configuration".white());
+    println!();
+
     Ok(())
 }
 
@@ -65,6 +148,10 @@ fn handle_xnode_command(command: XnodeCommands) -> Result<()> {
 
 #[derive(clap::Subcommand)]
 pub enum OpenMeshCommands {
+    /// Show OpenMesh overview and quick start
+    #[command(hide = true)]
+    Overview,
+
     /// 🍒 List all available cloud providers
     Providers,
 
