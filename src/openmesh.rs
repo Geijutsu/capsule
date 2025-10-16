@@ -271,9 +271,11 @@ fn list_providers() -> Result<()> {
 
     table.add_row(Row::new(vec![
         Cell::new("Provider").style_spec("Fb"),
-        Cell::new("Templates").style_spec("Fb"),
+        Cell::new("Type").style_spec("Fb"),
+        Cell::new("CPU Range").style_spec("Fb"),
+        Cell::new("Memory").style_spec("Fb"),
         Cell::new("Regions").style_spec("Fb"),
-        Cell::new("Price Range").style_spec("Fb"),
+        Cell::new("Price/hr").style_spec("Fb"),
         Cell::new("GPU").style_spec("Fb"),
     ]));
 
@@ -292,26 +294,42 @@ fn list_providers() -> Result<()> {
                 .max_by(|a, b| a.partial_cmp(b).unwrap())
                 .unwrap_or(0.0);
 
-            let has_gpu = templates.iter().any(|t| t.gpu.is_some());
+            let min_cpu = templates.iter().map(|t| t.cpu).min().unwrap_or(0);
+            let max_cpu = templates.iter().map(|t| t.cpu).max().unwrap_or(0);
 
-            // Cherry Servers gets special styling!
-            if provider_name == "cherry" {
-                table.add_row(Row::new(vec![
-                    Cell::new(&format!("🍒 {}", provider_name)).style_spec("FrBr"),  // Red bold on red background
-                    Cell::new(&templates.len().to_string()).style_spec("Fr"),
-                    Cell::new(&regions.len().to_string()).style_spec("Fr"),
-                    Cell::new(&format!("${:.3} - ${:.2}/hr", min_price, max_price)).style_spec("Fr"),
-                    Cell::new(if has_gpu { "✓" } else { "-" }).style_spec("Fr"),
-                ]));
+            let min_mem = templates.iter().map(|t| t.memory_gb).min().unwrap_or(0);
+            let max_mem = templates.iter().map(|t| t.memory_gb).max().unwrap_or(0);
+
+            let has_gpu = templates.iter().any(|t| t.gpu.is_some());
+            let gpu_count = templates.iter().filter(|t| t.gpu.is_some()).count();
+
+            // Determine instance type
+            let has_bare_metal = templates.iter().any(|t| t.features.contains(&"bare-metal".to_string()));
+            let has_cloud = templates.iter().any(|t| !t.features.contains(&"bare-metal".to_string()));
+            let instance_type = if has_bare_metal && has_cloud {
+                "Mixed"
+            } else if has_bare_metal {
+                "Bare Metal"
             } else {
-                table.add_row(Row::new(vec![
-                    Cell::new(&provider_name).style_spec("Fc"),
-                    Cell::new(&templates.len().to_string()),
-                    Cell::new(&regions.len().to_string()),
-                    Cell::new(&format!("${:.3} - ${:.2}/hr", min_price, max_price)),
-                    Cell::new(if has_gpu { "✓" } else { "-" }),
-                ]));
-            }
+                "Cloud"
+            };
+
+            // Cherry Servers gets just the emoji, no special colors
+            let display_name = if provider_name == "cherry" {
+                format!("🍒 {}", provider_name)
+            } else {
+                provider_name.clone()
+            };
+
+            table.add_row(Row::new(vec![
+                Cell::new(&display_name).style_spec("Fc"),
+                Cell::new(instance_type),
+                Cell::new(&format!("{}-{} cores", min_cpu, max_cpu)),
+                Cell::new(&format!("{}-{}GB", min_mem, max_mem)),
+                Cell::new(&regions.len().to_string()),
+                Cell::new(&format!("${:.3}-${:.2}", min_price, max_price)).style_spec("Fg"),
+                Cell::new(&if has_gpu { format!("{} ✓", gpu_count) } else { "-".to_string() }),
+            ]));
         }
     }
 
@@ -319,8 +337,13 @@ fn list_providers() -> Result<()> {
 
     println!();
     println!("{}", "─────────────────────────────────────────────────────────────────".cyan());
-    println!("{} {} providers available {}", "▸".green().bold(), providers.len(), "(🍒 Cherry Servers featured!)".magenta().bold());
-    println!("{} Use {} to view templates", "💡".cyan(), "capsule openmesh xnode templates".cyan().bold());
+    println!("{} {} providers • {} total templates • {} with GPU",
+        "▸".green().bold(),
+        providers.len(),
+        manager.get_all_templates().len(),
+        manager.get_gpu_templates().len()
+    );
+    println!("{} Use {} to view detailed templates", "💡".cyan(), "capsule openmesh xnode templates".cyan().bold());
     println!("{} Configure credentials: {}", "🔧".cyan(), "capsule openmesh provider configure <name> --api-key <key>".cyan().bold());
     println!();
 
