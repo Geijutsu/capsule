@@ -5,6 +5,7 @@ use colored::*;
 use capsule::config::*;
 use capsule::openmesh::*;
 use capsule::ui::*;
+use capsule::datastore::DataStore;
 
 #[derive(Parser)]
 #[command(name = "capsule")]
@@ -83,6 +84,77 @@ enum Commands {
         #[command(subcommand)]
         command: OpenMeshCommands,
     },
+
+    /// 💾 Embedded key-value datastore
+    Data {
+        #[command(subcommand)]
+        command: DataCommands,
+    },
+}
+
+#[derive(Subcommand)]
+enum DataCommands {
+    /// Get a value by key
+    Get {
+        /// Key to retrieve
+        key: String,
+    },
+
+    /// Set a key-value pair
+    Set {
+        /// Key to store
+        key: String,
+        /// Value to store (or use --file)
+        value: Option<String>,
+        /// Store contents of a file
+        #[arg(short, long)]
+        file: Option<std::path::PathBuf>,
+    },
+
+    /// Delete a key
+    Delete {
+        /// Key to delete
+        key: String,
+    },
+
+    /// List all keys
+    Keys,
+
+    /// List all key-value pairs
+    List,
+
+    /// Get file and save to disk
+    GetFile {
+        /// Key to retrieve
+        key: String,
+        /// Output file path
+        #[arg(short, long)]
+        output: std::path::PathBuf,
+    },
+
+    /// Store a file
+    SetFile {
+        /// Key to store under
+        key: String,
+        /// Input file path
+        file: std::path::PathBuf,
+    },
+
+    /// Show database statistics
+    Stats,
+
+    /// Export all data to directory
+    Export {
+        /// Output directory
+        output: std::path::PathBuf,
+    },
+
+    /// Clear all data (WARNING: destructive!)
+    Clear {
+        /// Confirm deletion
+        #[arg(long)]
+        confirm: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -142,6 +214,7 @@ fn main() -> Result<()> {
         Some(Commands::Profile { command }) => handle_profile_command(command)?,
         Some(Commands::Pkg { command }) => handle_pkg_command(command)?,
         Some(Commands::Openmesh { command }) => handle_openmesh_command(command)?,
+        Some(Commands::Data { command }) => handle_data_command(command)?,
     }
 
     Ok(())
@@ -529,6 +602,172 @@ fn handle_pkg_command(command: PkgCommands) -> Result<()> {
                 packages.len(),
                 active_name
             ));
+        }
+    }
+
+    Ok(())
+}
+
+fn handle_data_command(command: DataCommands) -> Result<()> {
+    let ds = DataStore::new()?;
+
+    match command {
+        DataCommands::Get { key } => {
+            if let Some(value) = ds.get(&key)? {
+                // Try to print as UTF-8 string, otherwise hex
+                match String::from_utf8(value.clone()) {
+                    Ok(s) => println!("{}", s),
+                    Err(_) => {
+                        println!("{}", "Binary data (hex):".yellow());
+                        for byte in value {
+                            print!("{:02x}", byte);
+                        }
+                        println!();
+                    }
+                }
+            } else {
+                error(&format!("Key '{}' not found", key));
+            }
+        }
+
+        DataCommands::Set { key, value, file } => {
+            if let Some(file_path) = file {
+                ds.set_file(&key, &file_path)?;
+                let metadata = std::fs::metadata(&file_path)?;
+                success(&format!("Stored file '{}' ({} bytes) as key '{}'", 
+                    file_path.display(), metadata.len(), key));
+            } else if let Some(val) = value {
+                ds.set(&key, val.as_bytes())?;
+                success(&format!("Stored key '{}' ({} bytes)", key, val.len()));
+            } else {
+                error("Must provide either value or --file");
+            }
+        }
+
+        DataCommands::Delete { key } => {
+            if ds.delete(&key)? {
+                success(&format!("Deleted key '{}'", key));
+            } else {
+                error(&format!("Key '{}' not found", key));
+            }
+        }
+
+        DataCommands::Keys => {
+            let keys = ds.list_keys()?;
+            if keys.is_empty() {
+                println!("{}", "No keys stored".yellow());
+            } else {
+                header("💾 STORED KEYS");
+                for key in keys {
+                    println!("  {} {}", "▸".cyan(), key.white());
+                }
+                println!();
+            }
+        }
+
+        DataCommands::List => {
+            let items = ds.list_all()?;
+            if items.is_empty() {
+                println!("{}", "No data stored".yellow());
+            } else {
+                header("💾 KEY-VALUE STORE");
+                
+                use prettytable::{Table, Row, Cell, format};
+                let mut table = Table::new();
+                table.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
+
+                table.add_row(Row::new(vec![
+                    Cell::new("Key").style_spec("Fb"),
+                    Cell::new("Size").style_spec("Fb"),
+                    Cell::new("Compressed").style_spec("Fb"),
+                ]));
+
+                for (key, size, compressed) in items {
+                    let size_str = if size < 1024 {
+                        format!("{} B", size)
+                    } else if size < 1024 * 1024 {
+                        format!("{:.1} KB", size as f64 / 1024.0)
+                    } else {
+                        format!("{:.1} MB", size as f64 / (1024.0 * 1024.0))
+                    };
+
+                    table.add_row(Row::new(vec![
+                        Cell::new(&key).style_spec("Fc"),
+                        Cell::new(&size_str).style_spec("Fg"),
+                        Cell::new(if compressed { "✓" } else { "-" }),
+                    ]));
+                }
+
+                table.printstd();
+                println!();
+
+                let (count, disk_size) = ds.stats()?;
+                println!("{} {} keys • {} on disk", 
+                    "▸".green().bold(), 
+                    count,
+                    if disk_size < 1024 {
+                        format!("{} B", disk_size)
+                    } else if disk_size < 1024 * 1024 {
+                        format!("{:.1} KB", disk_size as f64 / 1024.0)
+                    } else {
+                        format!("{:.1} MB", disk_size as f64 / (1024.0 * 1024.0))
+                    }
+                );
+                println!();
+            }
+        }
+
+        DataCommands::GetFile { key, output } => {
+            if ds.get_file(&key, &output)? {
+                success(&format!("Exported key '{}' to '{}'", key, output.display()));
+            } else {
+                error(&format!("Key '{}' not found", key));
+            }
+        }
+
+        DataCommands::SetFile { key, file } => {
+            ds.set_file(&key, &file)?;
+            let metadata = std::fs::metadata(&file)?;
+            success(&format!("Stored file '{}' ({} bytes) as key '{}'", 
+                file.display(), metadata.len(), key));
+        }
+
+        DataCommands::Stats => {
+            let (count, disk_size) = ds.stats()?;
+            header("💾 DATASTORE STATISTICS");
+            
+            println!("  {} {}", "Total keys:".white().bold(), count.to_string().cyan());
+            println!("  {} {}", "Disk usage:".white().bold(), 
+                if disk_size < 1024 {
+                    format!("{} B", disk_size).cyan().to_string()
+                } else if disk_size < 1024 * 1024 {
+                    format!("{:.2} KB", disk_size as f64 / 1024.0).cyan().to_string()
+                } else {
+                    format!("{:.2} MB", disk_size as f64 / (1024.0 * 1024.0)).cyan().to_string()
+                }
+            );
+            
+            let data_dir = home::home_dir()
+                .ok_or_else(|| anyhow::anyhow!("Could not find home directory"))?
+                .join(".capsule").join("data");
+            println!("  {} {}", "Location:".white().bold(), data_dir.display().to_string().cyan());
+            println!();
+        }
+
+        DataCommands::Export { output } => {
+            std::fs::create_dir_all(&output)?;
+            let count = ds.export(&output)?;
+            success(&format!("Exported {} keys to '{}'", count, output.display()));
+        }
+
+        DataCommands::Clear { confirm } => {
+            if !confirm {
+                error("This will delete ALL data. Use --confirm to proceed.");
+                return Ok(());
+            }
+            
+            let count = ds.clear()?;
+            success(&format!("Cleared {} keys from datastore", count));
         }
     }
 

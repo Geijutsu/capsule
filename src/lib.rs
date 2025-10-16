@@ -20,6 +20,9 @@ pub mod api;
 pub mod nix;
 pub mod nixos;
 
+// Embedded key-value datastore
+pub mod datastore;
+
 // Re-export for convenience
 pub use config::*;
 pub use openmesh::*;
