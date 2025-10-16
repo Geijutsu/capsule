@@ -7,10 +7,17 @@ use crate::providers::{ProviderManager, DeployConfig};
 
 pub fn handle_openmesh_command(command: OpenMeshCommands) -> Result<()> {
     match command {
-        OpenMeshCommands::Providers => list_providers()?,
+        OpenMeshCommands::Xnode { command } => handle_xnode_command(command)?,
         OpenMeshCommands::Provider { command } => handle_provider_command(command)?,
-        OpenMeshCommands::Templates { gpu } => list_templates(gpu)?,
-        OpenMeshCommands::Deploy {
+    }
+    Ok(())
+}
+
+fn handle_xnode_command(command: XnodeCommands) -> Result<()> {
+    match command {
+        XnodeCommands::Providers => list_providers()?,
+        XnodeCommands::Templates { gpu } => list_templates(gpu)?,
+        XnodeCommands::Deploy {
             provider,
             template,
             name,
@@ -19,35 +26,35 @@ pub fn handle_openmesh_command(command: OpenMeshCommands) -> Result<()> {
             min_cpu,
             min_memory,
         } => deploy_instance(provider, template, name, region, budget, min_cpu, min_memory)?,
-        OpenMeshCommands::Inventory { provider, status } => {
-            println!("{} Inventory feature (filtered by provider: {:?}, status: {:?})", "→".cyan(), provider, status);
-            println!("{}", "This feature is not yet implemented.".yellow());
-        },
-        OpenMeshCommands::Xnodes { status, provider } => {
+        XnodeCommands::List { status, provider } => {
             println!("{} xNodes list (filtered by status: {:?}, provider: {:?})", "→".cyan(), status, provider);
             println!("{}", "This feature is not yet implemented.".yellow());
         },
-        OpenMeshCommands::CostReport => {
+        XnodeCommands::Inventory { provider, status } => {
+            println!("{} Inventory feature (filtered by provider: {:?}, status: {:?})", "→".cyan(), provider, status);
+            println!("{}", "This feature is not yet implemented.".yellow());
+        },
+        XnodeCommands::CostReport => {
             println!("{} Cost report", "→".cyan());
             println!("{}", "This feature is not yet implemented.".yellow());
         },
-        OpenMeshCommands::Stats => {
+        XnodeCommands::Stats => {
             println!("{} Inventory statistics", "→".cyan());
             println!("{}", "This feature is not yet implemented.".yellow());
         },
-        OpenMeshCommands::Export { filename } => {
+        XnodeCommands::Export { filename } => {
             println!("{} Export to {}", "→".cyan(), filename);
             println!("{}", "This feature is not yet implemented.".yellow());
         },
-        OpenMeshCommands::Import { filename } => {
+        XnodeCommands::Import { filename } => {
             println!("{} Import from {}", "→".cyan(), filename);
             println!("{}", "This feature is not yet implemented.".yellow());
         },
-        OpenMeshCommands::History { xnode_id, provider, limit } => {
+        XnodeCommands::History { xnode_id, provider, limit } => {
             println!("{} Deployment history (xnode_id: {:?}, provider: {:?}, limit: {:?})", "→".cyan(), xnode_id, provider, limit);
             println!("{}", "This feature is not yet implemented.".yellow());
         },
-        OpenMeshCommands::Cleanup { days } => {
+        XnodeCommands::Cleanup { days } => {
             println!("{} Cleanup deployment history older than {} days", "→".cyan(), days);
             println!("{}", "This feature is not yet implemented.".yellow());
         },
@@ -57,23 +64,32 @@ pub fn handle_openmesh_command(command: OpenMeshCommands) -> Result<()> {
 
 #[derive(clap::Subcommand)]
 pub enum OpenMeshCommands {
-    /// List all available providers
-    Providers,
+    /// 🌐 xNode deployment and management
+    Xnode {
+        #[command(subcommand)]
+        command: XnodeCommands,
+    },
 
-    /// Configure a provider
+    /// 🔧 Provider configuration
     Provider {
         #[command(subcommand)]
         command: ProviderSubcommands,
     },
+}
 
-    /// List and compare templates across providers
+#[derive(clap::Subcommand)]
+pub enum XnodeCommands {
+    /// List all available cloud providers
+    Providers,
+
+    /// List and compare instance templates
     Templates {
         /// Show only GPU templates
         #[arg(long)]
         gpu: bool,
     },
 
-    /// Deploy an instance
+    /// Deploy a new xNode instance
     Deploy {
         /// Provider name (e.g., hivelocity, digitalocean)
         #[arg(short, long)]
@@ -104,7 +120,19 @@ pub enum OpenMeshCommands {
         min_memory: Option<u32>,
     },
 
-    /// View xNode inventory
+    /// List all deployed xNodes
+    #[command(alias = "ls")]
+    List {
+        /// Filter by status
+        #[arg(long)]
+        status: Option<String>,
+
+        /// Filter by provider
+        #[arg(long)]
+        provider: Option<String>,
+    },
+
+    /// View detailed xNode inventory
     Inventory {
         /// Filter by provider
         #[arg(long)]
@@ -115,18 +143,7 @@ pub enum OpenMeshCommands {
         status: Option<String>,
     },
 
-    /// List all xNodes
-    Xnodes {
-        /// Filter by status
-        #[arg(long)]
-        status: Option<String>,
-
-        /// Filter by provider
-        #[arg(long)]
-        provider: Option<String>,
-    },
-
-    /// Generate cost report
+    /// Generate cost analysis report
     #[command(name = "cost-report")]
     CostReport,
 
@@ -182,8 +199,12 @@ pub enum ProviderSubcommands {
 }
 
 fn list_providers() -> Result<()> {
-    println!("\n{}", "OPENMESH PROVIDERS".cyan().bold());
-    println!("{}\n", "=".repeat(60).cyan());
+    // ASCII art header
+    println!();
+    println!("{}", "╔═══════════════════════════════════════════════════════════════╗".cyan());
+    println!("{}", "║           🌐  OPENMESH CLOUD PROVIDERS  🌐                   ║".cyan().bold());
+    println!("{}", "╚═══════════════════════════════════════════════════════════════╝".cyan());
+    println!();
 
     let manager = ProviderManager::new(None)?;
     let providers = manager.list_providers();
@@ -199,8 +220,8 @@ fn list_providers() -> Result<()> {
         Cell::new("GPU").style_spec("Fb"),
     ]));
 
-    for provider_name in providers {
-        if let Some(provider) = manager.get_provider(&provider_name) {
+    for provider_name in &providers {
+        if let Some(provider) = manager.get_provider(provider_name) {
             let templates = provider.templates();
             let regions = provider.regions();
 
@@ -227,7 +248,12 @@ fn list_providers() -> Result<()> {
     }
 
     table.printstd();
-    println!("\n{}", format!("Use {} to configure credentials", "capsule openmesh provider configure <name> --api-key <key>".cyan()));
+
+    println!();
+    println!("{}", "─────────────────────────────────────────────────────────────────".cyan());
+    println!("{} {} providers available", "▸".green().bold(), providers.len());
+    println!("{} Use {} to view templates", "💡".cyan(), "capsule openmesh xnode templates".cyan().bold());
+    println!("{} Configure credentials: {}", "🔧".cyan(), "capsule openmesh provider configure <name> --api-key <key>".cyan().bold());
     println!();
 
     Ok(())
@@ -252,8 +278,18 @@ fn list_templates(gpu_only: bool) -> Result<()> {
         manager.get_all_templates()
     };
 
-    println!("\n{}", if gpu_only { "GPU TEMPLATES" } else { "ALL TEMPLATES" }.cyan().bold());
-    println!("{}\n", "=".repeat(100).cyan());
+    // ASCII art header
+    println!();
+    if gpu_only {
+        println!("{}", "╔═══════════════════════════════════════════════════════════════╗".cyan());
+        println!("{}", "║              🎮  GPU INSTANCE TEMPLATES  🎮                   ║".cyan().bold());
+        println!("{}", "╚═══════════════════════════════════════════════════════════════╝".cyan());
+    } else {
+        println!("{}", "╔═══════════════════════════════════════════════════════════════╗".cyan());
+        println!("{}", "║             📦  XNODE INSTANCE TEMPLATES  📦                  ║".cyan().bold());
+        println!("{}", "╚═══════════════════════════════════════════════════════════════╝".cyan());
+    }
+    println!();
 
     let mut table = Table::new();
     table.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
@@ -283,7 +319,15 @@ fn list_templates(gpu_only: bool) -> Result<()> {
     }
 
     table.printstd();
-    println!("\n{} templates found\n", templates.len());
+
+    println!();
+    println!("{}", "─────────────────────────────────────────────────────────────────".cyan());
+    println!("{} {} templates available", "▸".green().bold(), templates.len());
+    println!("{} Deploy with: {}", "🚀".cyan(), "capsule openmesh xnode deploy --provider <name> --template <id>".cyan().bold());
+    if !gpu_only {
+        println!("{} GPU only: {}", "💡".cyan(), "capsule openmesh xnode templates --gpu".cyan().bold());
+    }
+    println!();
 
     Ok(())
 }
@@ -344,23 +388,34 @@ fn deploy_instance(
         extra: HashMap::new(),
     };
 
-    println!("\n{}", "DEPLOYING INSTANCE".cyan().bold());
-    println!("{}", "=".repeat(60).cyan());
-    println!("  Provider:  {}", selected_provider.cyan());
-    println!("  Template:  {}", selected_template.cyan());
-    println!("  Name:      {}", config.name.cyan());
-    println!("  Region:    {}", config.region.cyan());
+    // ASCII art header
     println!();
+    println!("{}", "╔═══════════════════════════════════════════════════════════════╗".cyan());
+    println!("{}", "║              🚀  DEPLOYING XNODE INSTANCE  🚀                 ║".cyan().bold());
+    println!("{}", "╚═══════════════════════════════════════════════════════════════╝".cyan());
+    println!();
+    println!("  {} {}", "Provider:".white().bold(), selected_provider.cyan());
+    println!("  {} {}", "Template:".white().bold(), selected_template.cyan());
+    println!("  {} {}", "Name:".white().bold(), config.name.cyan());
+    println!("  {} {}", "Region:".white().bold(), config.region.cyan());
+    println!();
+    println!("{} Provisioning instance...", "▸".green().bold());
 
     let instance = manager.deploy_to_provider(&selected_provider, &selected_template, &config)?;
 
-    println!("{} Instance deployed successfully!", "✓".green());
-    println!("  ID:        {}", instance.id.cyan());
-    println!("  Status:    {}", instance.status.yellow());
-    println!("  Cost:      ${:.3}/hr (${:.2}/mo)",
+    println!();
+    println!("{}", "─────────────────────────────────────────────────────────────────".green());
+    println!("{} Instance deployed successfully!", "✓".green().bold());
+    println!();
+    println!("  {} {}", "Instance ID:".white().bold(), instance.id.cyan());
+    println!("  {} {}", "Status:".white().bold(), instance.status.yellow());
+    println!("  {} ${:.3}/hr (${:.2}/mo)",
+        "Cost:".white().bold(),
         instance.cost_hourly,
         instance.cost_hourly * 730.0
     );
+    println!();
+    println!("{} Use {} to view all instances", "💡".cyan(), "capsule openmesh xnode list".cyan().bold());
     println!();
 
     Ok(())
