@@ -3,7 +3,7 @@ use clap::{Parser, Subcommand};
 use colored::*;
 
 use capsule::config::*;
-use capsule::openmesh::*;
+use capsule::openmesh::{handle_openmesh_command, handle_xnode_command, OpenMeshCommands, XnodeCommands};
 use capsule::ui::*;
 use capsule::datastore::DataStore;
 
@@ -55,6 +55,12 @@ enum Commands {
     Openmesh {
         #[command(subcommand)]
         command: Option<OpenMeshCommands>,
+    },
+
+    /// 🌐 xNode deployment and management (alias for 'openmesh xnode')
+    Xnode {
+        #[command(subcommand)]
+        command: XnodeCommands,
     },
 
     /// 💾 Embedded key-value datastore
@@ -192,6 +198,10 @@ fn main() -> Result<()> {
                 // Show beautiful overview when no subcommand provided
                 handle_openmesh_command(OpenMeshCommands::Overview)?;
             }
+        }
+        Some(Commands::Xnode { command }) => {
+            // Alias for openmesh xnode
+            handle_xnode_command(command)?;
         }
         Some(Commands::Data { command }) => handle_data_command(command)?,
     }

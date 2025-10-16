@@ -1,5 +1,6 @@
 use anyhow::Result;
 use colored::*;
+use dialoguer::{Select, Input, Confirm};
 use prettytable::{Table, Row, Cell, format};
 use std::collections::HashMap;
 
@@ -97,7 +98,7 @@ fn show_openmesh_overview() -> Result<()> {
     Ok(())
 }
 
-fn handle_xnode_command(command: XnodeCommands) -> Result<()> {
+pub fn handle_xnode_command(command: XnodeCommands) -> Result<()> {
     match command {
         XnodeCommands::Providers => list_providers()?,
         XnodeCommands::Templates { gpu } => list_templates(gpu)?,
@@ -222,6 +223,7 @@ pub enum OpenMeshCommands {
     • Smart deployment: omit provider/template for auto-selection\n\
     • Filter commands support --provider and --status flags\n\
 ")]
+#[derive(Clone)]
 pub enum XnodeCommands {
     /// List all available cloud providers
     Providers,
@@ -519,11 +521,69 @@ fn deploy_instance(
     min_cpu: Option<u32>,
     min_memory: Option<u32>,
 ) -> Result<()> {
-    let manager = ProviderManager::new(None)?;
+    let mut manager = ProviderManager::new(None)?;
 
-    // Smart deployment: find best option based on constraints
-    let (selected_provider, selected_template) = if provider.is_some() && template.is_some() {
-        (provider.unwrap(), template.unwrap())
+    // Interactive provider selection if not specified
+    let selected_provider = if let Some(p) = provider {
+        p
+    } else {
+        println!();
+        println!("{}", "╔═══════════════════════════════════════════════════════════════╗".cyan());
+        println!("{}", "║         🌐  SELECT CLOUD PROVIDER  🌐                        ║".cyan().bold());
+        println!("{}", "╚═══════════════════════════════════════════════════════════════╝".cyan());
+        println!();
+
+        let providers = manager.list_providers();
+        let provider_options: Vec<String> = providers.iter().map(|p| {
+            let has_creds = manager.has_credentials(p);
+            let emoji = if p == "cherry" { "🍒" } else { "○" };
+            let cred_indicator = if has_creds { "✓" } else { "⚠" };
+            format!("{} {} {}", emoji, p, cred_indicator)
+        }).collect();
+
+        let selection = Select::new()
+            .with_prompt("Choose a provider")
+            .items(&provider_options)
+            .default(0)
+            .interact()?;
+
+        let selected = providers[selection].clone();
+
+        // Check if provider has credentials
+        if !manager.has_credentials(&selected) {
+            println!();
+            println!("{} Provider '{}' has no API credentials configured", "⚠".yellow(), selected.cyan());
+
+            let configure = Confirm::new()
+                .with_prompt("Would you like to configure credentials now?")
+                .default(false)
+                .interact()?;
+
+            if configure {
+                println!();
+                let api_key: String = Input::new()
+                    .with_prompt(format!("Enter API key for {}", selected))
+                    .interact_text()?;
+
+                manager.configure_provider(selected.clone(), api_key)?;
+                println!();
+                println!("{} Credentials configured successfully!", "✓".green());
+            } else {
+                println!();
+                println!("{} Proceeding with mock deployment (no real resources will be created)", "ℹ".cyan());
+            }
+        }
+
+        selected
+    };
+
+    // Smart template selection
+    let (selected_template, template_obj) = if let Some(t) = template {
+        let provider_obj = manager.get_provider(&selected_provider)
+            .ok_or_else(|| anyhow::anyhow!("Provider not found"))?;
+        let tmpl = provider_obj.get_template(&t)
+            .ok_or_else(|| anyhow::anyhow!("Template not found"))?;
+        (t, tmpl.clone())
     } else {
         // Find cheapest option matching requirements
         let matching = manager.compare_templates(
@@ -532,19 +592,23 @@ fn deploy_instance(
             budget.unwrap_or(f64::MAX),
         );
 
-        if matching.is_empty() {
-            anyhow::bail!("No templates found matching your requirements");
+        let provider_matching: Vec<_> = matching.into_iter()
+            .filter(|t| t.provider == selected_provider)
+            .collect();
+
+        if provider_matching.is_empty() {
+            anyhow::bail!("No templates found matching your requirements for provider '{}'", selected_provider);
         }
 
-        let best = &matching[0];
-        println!("{} Auto-selected: {} - {} (${:.3}/hr)",
+        let best = &provider_matching[0];
+        println!();
+        println!("{} Auto-selected template: {} (${:.3}/hr)",
             "→".cyan(),
-            best.provider.cyan(),
             best.name.cyan(),
             best.price_hourly
         );
 
-        (best.provider.clone(), best.id.clone())
+        (best.id.clone(), best.clone())
     };
 
     let instance_name = name.unwrap_or_else(|| "xnode-instance".to_string());
@@ -573,9 +637,20 @@ fn deploy_instance(
     println!("{}", "╚═══════════════════════════════════════════════════════════════╝".cyan());
     println!();
     println!("  {} {}", "Provider:".white().bold(), selected_provider.cyan());
-    println!("  {} {}", "Template:".white().bold(), selected_template.cyan());
+    println!("  {} {}", "Template:".white().bold(), template_obj.name.cyan());
     println!("  {} {}", "Name:".white().bold(), config.name.cyan());
     println!("  {} {}", "Region:".white().bold(), config.region.cyan());
+    println!("  {} {} cores • {} GB RAM • {} GB storage",
+        "Specs:".white().bold(),
+        template_obj.cpu,
+        template_obj.memory_gb,
+        template_obj.storage_gb
+    );
+    println!("  {} ${:.3}/hr • ${:.2}/month",
+        "Cost:".white().bold(),
+        template_obj.price_hourly,
+        template_obj.price_monthly
+    );
     println!();
     println!("{} Provisioning instance...", "▸".green().bold());
 
@@ -593,7 +668,7 @@ fn deploy_instance(
         instance.cost_hourly * 730.0
     );
     println!();
-    println!("{} Use {} to view all instances", "💡".cyan(), "capsule openmesh xnode list".cyan().bold());
+    println!("{} Use {} to view all instances", "💡".cyan(), "capsule xnode list".cyan().bold());
     println!();
 
     Ok(())

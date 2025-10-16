@@ -275,6 +275,13 @@ impl ProviderManager {
         Ok(())
     }
 
+    pub fn has_credentials(&self, provider_name: &str) -> bool {
+        self.config
+            .get(provider_name)
+            .and_then(|c| c.api_key.as_ref())
+            .is_some()
+    }
+
     fn save_config(&self) -> Result<()> {
         if let Some(parent) = self.config_file.parent() {
             std::fs::create_dir_all(parent)?;
