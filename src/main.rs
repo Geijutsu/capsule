@@ -51,6 +51,34 @@ enum Commands {
     },
 
     /// OpenMesh xNode deployment and management
+    #[command(after_help = "\n\
+╔═══════════════════════════════════════════════════════════════╗\n\
+║                   🌐  OPENMESH PLATFORM  🌐                   ║\n\
+╚═══════════════════════════════════════════════════════════════╝\n\
+\n\
+  Deploy and manage OpenMesh xNode infrastructure across multiple\n\
+  cloud providers with a unified, beautiful interface.\n\
+\n\
+  Main Commands:\n\
+    xnode        🌐 Deploy and manage xNode instances\n\
+    provider     🔧 Configure cloud provider credentials\n\
+\n\
+  Quick Examples:\n\
+    capsule openmesh xnode providers       → List 7 cloud providers\n\
+    capsule openmesh xnode templates       → Browse 31 templates\n\
+    capsule openmesh xnode deploy          → Smart deployment\n\
+    capsule openmesh provider configure    → Set API keys\n\
+\n\
+  What You Get:\n\
+    ✓ 7 cloud providers (AWS, DigitalOcean, Vultr, Hivelocity...)\n\
+    ✓ 31 instance templates (budget $0.004/hr to enterprise GPU)\n\
+    ✓ 50+ datacenter regions worldwide\n\
+    ✓ GPU templates (Tesla V100, RTX 6000, H100)\n\
+    ✓ Cost tracking and analytics\n\
+    ✓ Inventory management with CSV export\n\
+\n\
+  💡 Tip: Run 'capsule openmesh xnode --help' for all xNode commands\n\
+")]
     Openmesh {
         #[command(subcommand)]
         command: OpenMeshCommands,

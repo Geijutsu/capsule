@@ -65,6 +65,27 @@ fn handle_xnode_command(command: XnodeCommands) -> Result<()> {
 #[derive(clap::Subcommand)]
 pub enum OpenMeshCommands {
     /// 🌐 xNode deployment and management
+    #[command(after_help = "\n\
+╔═══════════════════════════════════════════════════════════════╗\n\
+║              🌐  OPENMESH XNODE MANAGEMENT  🌐                ║\n\
+╚═══════════════════════════════════════════════════════════════╝\n\
+\n\
+  Deploy and manage OpenMesh xNode infrastructure across multiple\n\
+  cloud providers with a unified interface.\n\
+\n\
+  Quick Start:\n\
+    • capsule openmesh xnode providers    → List all cloud providers\n\
+    • capsule openmesh xnode templates    → Browse instance templates\n\
+    • capsule openmesh xnode deploy       → Deploy a new xNode\n\
+    • capsule openmesh xnode list         → View all deployed xNodes\n\
+\n\
+  Features:\n\
+    ✓ 7 cloud providers (AWS, DigitalOcean, Hivelocity, etc.)\n\
+    ✓ 31 instance templates (budget to enterprise GPU)\n\
+    ✓ 50+ datacenter regions worldwide\n\
+    ✓ Smart deployment with auto-selection\n\
+    ✓ Cost tracking and analytics\n\
+")]
     Xnode {
         #[command(subcommand)]
         command: XnodeCommands,
@@ -78,6 +99,38 @@ pub enum OpenMeshCommands {
 }
 
 #[derive(clap::Subcommand)]
+#[command(after_help = "\n\
+╔═══════════════════════════════════════════════════════════════╗\n\
+║                    🌐  XNODE COMMANDS  🌐                     ║\n\
+╚═══════════════════════════════════════════════════════════════╝\n\
+\n\
+  📋 Discovery & Planning:\n\
+    providers       List cloud providers and capabilities\n\
+    templates       Browse instance templates and pricing\n\
+\n\
+  🚀 Deployment:\n\
+    deploy          Launch new xNode instances\n\
+                    Example: --provider hivelocity --template small\n\
+\n\
+  📊 Management:\n\
+    list (ls)       View all deployed xNodes\n\
+    inventory       Detailed xNode inventory\n\
+    stats           Show deployment statistics\n\
+\n\
+  💰 Cost Analysis:\n\
+    cost-report     Generate cost breakdown\n\
+    export          Export data to CSV\n\
+    import          Import inventory from CSV\n\
+\n\
+  🔍 History:\n\
+    history         View deployment history\n\
+    cleanup         Remove old history records\n\
+\n\
+  💡 Tips:\n\
+    • Use --help on any command for detailed options\n\
+    • Smart deployment: omit provider/template for auto-selection\n\
+    • Filter commands support --provider and --status flags\n\
+")]
 pub enum XnodeCommands {
     /// List all available cloud providers
     Providers,
