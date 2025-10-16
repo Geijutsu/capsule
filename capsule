@@ -1,0 +1,8 @@
+#!/usr/bin/env python3
+"""Capsule CLI wrapper"""
+import sys
+sys.path.insert(0, '/Users/joshkornreich/Documents/Projects/CLIs/capsule')
+from capsule_package import cli
+
+if __name__ == '__main__':
+    cli()
