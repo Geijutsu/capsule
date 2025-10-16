@@ -1,3 +1,9 @@
+# Rust
+/target/
+**/*.rs.bk
+*.pdb
+Cargo.lock  # Keep this if library, ignore if binary (we'll keep it)
+
 # Python
 __pycache__/
 *.py[cod]
@@ -61,8 +67,27 @@ result-*
 *.bak
 *.log
 
-# Build scripts (these are just for development/porting)
+# Build scripts (development only)
 port_commands.py
 convert_presets.py
 add_lazy_loading.py
 fix_preview.py
+complete_inventory_integration.sh
+
+# Generated documentation (optional - uncomment if you don't want to commit generated docs)
+# target/doc/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Sensitive files
+*.key
+*.pem
+*.cert
+.env
+.env.local
+credentials.json
+secrets.yml
+providers.yml  # Contains API keys
