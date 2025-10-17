@@ -7,6 +7,8 @@ use capsule::openmesh::{handle_openmesh_command, handle_xnode_command, OpenMeshC
 use capsule::ui::*;
 use capsule::datastore::DataStore;
 
+mod server;
+
 #[derive(Parser)]
 #[command(name = "capsule")]
 #[command(version = "0.1.0")]
@@ -67,6 +69,42 @@ enum Commands {
     Data {
         #[command(subcommand)]
         command: DataCommands,
+    },
+
+    /// 📸 Server snapshot and restore
+    Server {
+        #[command(subcommand)]
+        command: ServerCommands,
+    },
+}
+
+#[derive(Subcommand)]
+enum ServerCommands {
+    /// Create a server snapshot with Nix configuration
+    Pack {
+        /// Output directory for snapshot
+        #[arg(default_value = "./capsule-snapshot")]
+        output: std::path::PathBuf,
+    },
+
+    /// Restore server from snapshot
+    Unpack {
+        /// Snapshot directory to restore from
+        snapshot: std::path::PathBuf,
+
+        /// Dry run - show what would be done
+        #[arg(long)]
+        dry_run: bool,
+    },
+
+    /// Validate snapshot integrity with checksums
+    Validate {
+        /// Snapshot directory to validate
+        snapshot: std::path::PathBuf,
+
+        /// Verbose output showing all file checks
+        #[arg(short, long)]
+        verbose: bool,
     },
 }
 
@@ -204,6 +242,7 @@ fn main() -> Result<()> {
             handle_xnode_command(command)?;
         }
         Some(Commands::Data { command }) => handle_data_command(command)?,
+        Some(Commands::Server { command }) => handle_server_command(command)?,
     }
 
     Ok(())
@@ -757,6 +796,22 @@ fn handle_data_command(command: DataCommands) -> Result<()> {
             
             let count = ds.clear()?;
             success(&format!("Cleared {} keys from datastore", count));
+        }
+    }
+
+    Ok(())
+}
+
+fn handle_server_command(command: ServerCommands) -> Result<()> {
+    match command {
+        ServerCommands::Pack { output } => {
+            server::pack(&output)?;
+        }
+        ServerCommands::Unpack { snapshot, dry_run } => {
+            server::unpack(&snapshot, dry_run)?;
+        }
+        ServerCommands::Validate { snapshot, verbose } => {
+            server::validate(&snapshot, verbose)?;
         }
     }
 
