@@ -76,6 +76,16 @@ enum Commands {
         #[command(subcommand)]
         command: ServerCommands,
     },
+
+    /// 📤 Send capsule binary to remote server
+    Send {
+        /// Remote server (user@host or host)
+        server: String,
+
+        /// Remote installation path
+        #[arg(short, long, default_value = "/usr/local/bin/capsule")]
+        path: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -243,6 +253,7 @@ fn main() -> Result<()> {
         }
         Some(Commands::Data { command }) => handle_data_command(command)?,
         Some(Commands::Server { command }) => handle_server_command(command)?,
+        Some(Commands::Send { server, path }) => handle_send_command(&server, &path)?,
     }
 
     Ok(())
@@ -814,6 +825,110 @@ fn handle_server_command(command: ServerCommands) -> Result<()> {
             server::validate(&snapshot, verbose)?;
         }
     }
+
+    Ok(())
+}
+
+fn handle_send_command(server: &str, remote_path: &str) -> Result<()> {
+    use anyhow::Context;
+    use std::process::Command;
+
+    println!("{}", "📤 Sending capsule binary to remote server...".cyan().bold());
+    println!();
+
+    // Get the current binary path
+    let binary_path = std::env::current_exe()
+        .context("Failed to locate capsule binary")?;
+
+    println!("{} Binary location: {}",
+        "▸".green().bold(),
+        binary_path.display().to_string().cyan());
+
+    // Check binary size
+    let metadata = std::fs::metadata(&binary_path)
+        .context("Failed to read binary metadata")?;
+    let size_mb = metadata.len() as f64 / (1024.0 * 1024.0);
+
+    println!("{} Binary size: {:.2} MB",
+        "▸".green().bold(),
+        size_mb.to_string().cyan());
+    println!();
+
+    // Use SCP to transfer the binary
+    println!("{} Transferring to {}...",
+        "▸".green().bold(),
+        server.cyan());
+
+    let temp_path = format!("/tmp/capsule-{}", std::process::id());
+
+    let scp_status = Command::new("scp")
+        .arg(&binary_path)
+        .arg(format!("{}:{}", server, temp_path))
+        .status()
+        .context("Failed to execute scp")?;
+
+    if !scp_status.success() {
+        anyhow::bail!("SCP transfer failed");
+    }
+
+    println!("{} Transfer complete", "  ✓".green());
+    println!();
+
+    // Install to remote path
+    println!("{} Installing to {}...",
+        "▸".green().bold(),
+        remote_path.cyan());
+
+    let install_cmd = format!(
+        "sudo mv {} {} && sudo chmod +x {}",
+        temp_path, remote_path, remote_path
+    );
+
+    let ssh_status = Command::new("ssh")
+        .arg(server)
+        .arg(&install_cmd)
+        .status()
+        .context("Failed to execute ssh")?;
+
+    if !ssh_status.success() {
+        anyhow::bail!("Remote installation failed");
+    }
+
+    println!("{} Installation complete", "  ✓".green());
+    println!();
+
+    // Verify installation
+    println!("{} Verifying installation...", "▸".green().bold());
+
+    let verify_cmd = format!("{} --version", remote_path);
+    let verify_status = Command::new("ssh")
+        .arg(server)
+        .arg(&verify_cmd)
+        .status()
+        .context("Failed to verify installation")?;
+
+    if !verify_status.success() {
+        println!("{} {} (binary installed but may not be in PATH)",
+            "  !".yellow(),
+            "Warning: verification failed".yellow());
+    } else {
+        println!("{} Capsule is ready on remote server", "  ✓".green());
+    }
+    println!();
+
+    println!("{} Capsule successfully deployed to {}",
+        "✅".green(),
+        server.green().bold());
+    println!();
+    println!("{} Connect: {} {}",
+        "💡 Tip:".yellow(),
+        "ssh".cyan().bold(),
+        server.cyan());
+    println!("{} Run: {} {}",
+        "💡 Tip:".yellow(),
+        "ssh".cyan().bold(),
+        format!("{} 'capsule --help'", server).cyan());
+    println!();
 
     Ok(())
 }
